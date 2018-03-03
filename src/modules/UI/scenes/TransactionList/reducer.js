@@ -26,6 +26,15 @@ const transactions = (state: TransactionsState = [], action: Action) => {
   }
 }
 
+const visibleTransactions = (state: Array<any> = [], action: Action) => {
+  switch (action.type) {
+    case ACTION.UPDATE_WALLET_TRANSACTIONS:
+      return action.data.groupedTransactionsByDate
+    default:
+      return state
+  }
+}
+
 const searchVisible = (state: boolean = false, action: Action) => {
   switch (action.type) {
     case ACTION.TRANSACTIONS_SEARCH_VISIBLE:
@@ -68,12 +77,25 @@ const transactionsWalletListModalVisibility = (state = false, action) => {
   }
 }
 
+const loadingTransactions = (state = false, action) => {
+  switch (action.type) {
+    case ACTION.START_TRANSACTIONS_LOADING:
+      return true
+    case ACTION.END_TRANSACTIONS_LOADING:
+      return false
+    default:
+      return state
+  }
+}
+
 export const transactionList = combineReducers({
   transactions,
   searchVisible,
   contactsList,
   updatingBalance,
-  transactionsWalletListModalVisibility
+  transactionsWalletListModalVisibility,
+  visibleTransactions,
+  loadingTransactions
 })
 
 export default transactionList

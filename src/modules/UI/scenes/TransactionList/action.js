@@ -12,6 +12,7 @@ import { displayTransactionAlert } from '../../components/TransactionAlert/actio
 const PREFIX = 'UI/Scenes/TransactionList/'
 export const UPDATE_TRANSACTIONS_LIST = PREFIX + 'UPDATE_TRANSACTIONS_LIST'
 export const DELETE_TRANSACTIONS_LIST = PREFIX + 'DELETE_TRANSACTIONS_LIST'
+export const UPDATE_WALLET_TRANSACTIONS = PREFIX + 'UPDATE_WALLET_TRANSACTIONS'
 export const TRANSACTIONS_SEARCH_VISIBLE = PREFIX + 'TRANSACTIONS_SEARCH_VISIBLE'
 export const TRANSACTIONS_SEARCH_HIDDEN = PREFIX + 'TRANSACTIONS_SEARCH_HIDDEN'
 export const UPDATE_CONTACTS_LIST = PREFIX + 'UPDATE_CONTACTS_LIST'
@@ -37,6 +38,15 @@ export const getTransactionsRequest = (walletId: string, currencyCode) => (dispa
   }
 }
 
+export const fetchTransactions = (walletId: string, currencyCode: string, options: object = {}, multiplier) => (dispatch: Dispatch, getState: GetState) => {
+  const state = getState()
+  const transactions = CORE_SELECTORS.fetchWalletTransactions(state, walletId, currencyCode, options)
+  const existingGroupedTransactions = state.ui.scenes.transactionList.visibleTransactions
+  const newGroupedTransactionsByDate = groupTransactionsByDate(transactions, multiplier)
+  const joinedGroupedTransactions = existingGroupedTransactions.concat(newGroupedTransactionsByDate)
+  dispatch(updateVisibleTransactions(joinedGroupedTransactions))
+}
+
 export const refreshTransactionsRequest = (walletId: string) => (dispatch: Dispatch, getState: GetState) => {
   const state = getState()
   const selectedWalletId = UI_SELECTORS.getSelectedWalletId(state)
@@ -53,6 +63,11 @@ export const newTransactionsRequest = (walletId: string, abcTransactions: Array<
 
   dispatch(displayTransactionAlert(abcTransaction))
 }
+
+export const updateVisibleTransactions = (groupedTransactionsByDate) => ({
+  type: UPDATE_WALLET_TRANSACTIONS,
+  data: { groupedTransactionsByDate }
+})
 
 export const newTransactions = (transactions: Array<AbcTransaction>) => ({
   type: NEW_TRANSACTIONS,
@@ -120,4 +135,32 @@ export function toggleTransactionsWalletListModal () {
   return {
     type: TOGGLE_TRANSACTIONS_WALLET_LIST_MODAL
   }
+}
+
+export function groupTransactionsByDate (transactions, multiplier) {
+  const sectionedTransactionList = []
+  let previousDateString: string = ''
+  let currentSectionData = {title: '', data: []}
+  transactions.map((x, i) => {
+    const newValue: TransactionListTx = x
+    newValue.key = i
+    newValue.multiplier = multiplier
+    const txDate = new Date(x.date * 1000)
+
+    // let time = formatAMPM(txDate)
+    // let dateString = monthNames[month] + ' ' + day + ', ' + year // will we need to change date format based on locale?
+    const dateString = txDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    const time = txDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric' })
+    newValue.dateString = dateString
+    newValue.time = time
+    if (previousDateString === dateString) { // if it's still in the same date
+      currentSectionData.data.unshift(newValue)
+    } else { // if it is not the same date
+      currentSectionData = {title: dateString, data: [newValue]}
+      sectionedTransactionList.unshift(currentSectionData)
+    }
+    previousDateString = dateString
+    return newValue
+  })
+  return sectionedTransactionList
 }

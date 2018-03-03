@@ -54,7 +54,8 @@ type State = {
   balanceBoxOpacity: any,
   balanceBoxHeight: any,
   width: ?number,
-  showBalance: boolean
+  showBalance: boolean,
+  endIndex: Number
 }
 
 type TransactionListTx = any
@@ -78,17 +79,19 @@ export default class TransactionList extends Component<Props, State> {
     renderedTxCount: 0,
     completedTx: [],
     dataSrc: [],
-    width: undefined
+    width: undefined,
+    currentEndIndex: 0
+  }
+
+  componentWillMount () {
+    const walletId = this.props.selectedWalletId
+    const currencyCode = this.props.selectedCurrencyCode
+    this.props.updateExchangeRates()
+    this.fetchTransactions(walletId, currencyCode)
   }
 
   componentDidMount () {
     if (this.props.loading) return
-
-    const walletId = this.props.selectedWalletId
-    const currencyCode = this.props.selectedCurrencyCode
-    this.props.updateExchangeRates()
-    this.props.getTransactions(walletId, currencyCode)
-
     if (!this.props.contact) {
       Permissions.check('contacts').then(response => {
         if (response === 'authorized') {
@@ -105,6 +108,21 @@ export default class TransactionList extends Component<Props, State> {
         }
       })
     }
+  }
+
+  fetchTransactions = (walletId, currencyCode) => {
+    const options = {
+      numEntries: 10,
+      numIndex: this.state.currentEndIndex
+    }
+
+    this.props.fetchTransactions(walletId, currencyCode, options, this.props.multiplier)
+  }
+
+  handleScrollEnd = () => {
+    const walletId = this.props.selectedWalletId
+    const currencyCode = this.props.selectedCurrencyCode
+    this.setState(state => ({currentEndIndex: state.currentEndIndex + 10}), () => this.fetchTransactions(walletId, currencyCode))
   }
 
   _onSearchChange = () => {
@@ -187,8 +205,6 @@ export default class TransactionList extends Component<Props, State> {
     const {
       loading,
       updatingBalance,
-      transactions,
-      multiplier,
       uiWallet,
       selectedCurrencyCode,
       displayDenomination,
@@ -206,7 +222,7 @@ export default class TransactionList extends Component<Props, State> {
       a = new Date(a.date)
       b = new Date(b.date)
       return a > b ? -1 : a < b ? 1 : 0
-    }) */
+    })
     const sectionedTransactionList = []
     let previousDateString: string = ''
     let currentSectionData = {title: '', data: []}
@@ -233,7 +249,7 @@ export default class TransactionList extends Component<Props, State> {
       return newValue
     })
     console.log('end   processing dates: ', Date.now())
-
+    */
     let logo
 
     if (uiWallet.currencyCode !== selectedCurrencyCode) {
@@ -340,18 +356,13 @@ export default class TransactionList extends Component<Props, State> {
               <View style={[styles.transactionsWrap]}>
                 <SectionList
                   style={[styles.transactionsScrollWrap]}
-                  sections={sectionedTransactionList}
+                  sections={this.props.visibleTransactions}
                   renderItem={this.renderTx}
                   initialNumToRender={10}
                   renderSectionHeader={({section}) => this.renderSectionHeader(section)}
-                  removeClippedSubviews={true}
                   stickySectionHeadersEnabled={true}
-                  /* onEndReached={this.loadMoreTransactions}
-                  onEndReachedThreshold={60}
-                  enableEmptySections
-                  initialIterator={-1}
-                  removeClippedSubviews={false}
-                  */
+                  onEndReached={() => this.handleScrollEnd()}
+                  onEndReachedThreshold={5}
                 />
               </View>
             </View>
